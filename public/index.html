@@ -3,649 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PipelineFlow | Webhook Automation Dashboard</title>
+    <title>PipelineFlow | Real-time Webhook Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .toast { animation: slideIn 0.3s ease-out; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-[#0f172a] text-slate-200 min-h-screen flex flex-col">
+
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="fixed inset-0 z-[100] bg-[#0f172a] flex items-center justify-center p-4">
+        <div class="w-full max-w-md space-y-8 text-center">
+            <div class="flex flex-col items-center">
+                <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl mb-6">
+                    <i data-lucide="lock" class="w-8 h-8 text-white"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-white tracking-tight">System Locked</h1>
+                <p class="text-slate-400 mt-2">Enter Admin API Key to access PipelineFlow</p>
+            </div>
+            <form onsubmit="handleAuth(event)" class="space-y-4">
+                <input type="password" id="auth-key" required placeholder="API Key..." 
+                       class="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-600 transition text-center font-mono">
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition">Unlock Dashboard</button>
+            </form>
+        </div>
+    </div>
 
     <!-- Toast Container -->
     <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-3"></div>
 
     <!-- Navigation -->
     <nav class="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-6 py-3 flex justify-between items-center">
-        <div class="flex items-center space-x-3 group cursor-pointer" onclick="location.reload()">
-            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
-                <i data-lucide="zap" class="w-6 h-6 text-white fill-current"></i>
+        <div class="flex items-center space-x-8">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="location.reload()">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <i data-lucide="zap" class="w-6 h-6 text-white fill-current"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-tight">PipelineFlow</h1>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest text-emerald-500">Live Engine</p>
+                </div>
             </div>
-            <div>
-                <h1 class="text-lg font-bold text-white tracking-tight">PipelineFlow</h1>
-                <p class="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Automation Engine</p>
+            <div class="flex items-center space-x-1 bg-slate-800/40 p-1 rounded-xl border border-slate-700/50">
+                <button onclick="switchTab('pipelines')" id="tab-btn-pipelines" class="flex items-center space-x-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition text-slate-400 hover:text-white">Pipelines</button>
+                <button onclick="switchTab('logs')" id="tab-btn-logs" class="flex items-center space-x-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition text-slate-400 hover:text-white">System Logs</button>
             </div>
         </div>
-        
         <div class="flex items-center space-x-4">
-            <div id="api-status" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-800/50 border border-slate-700">
+            <button onclick="handleLogout()" class="p-2 text-slate-500 hover:text-red-400 transition" title="Logout"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+            <div class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-800/50 border border-slate-700">
                 <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span class="text-xs font-medium text-slate-300">System Online</span>
+                <span class="text-[10px] font-bold text-slate-300 uppercase">Online</span>
             </div>
-            <button onclick="openCreateModal()" class="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-semibold transition-all shadow-lg shadow-indigo-600/20 active:scale-95">
-                <i data-lucide="plus" class="w-4 h-4"></i>
-                <span>New Pipeline</span>
-            </button>
+            <button onclick="openCreateModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-semibold shadow-lg active:scale-95 transition">New Pipeline</button>
         </div>
     </nav>
 
-    <main class="flex-1 flex overflow-hidden">
-        
-        <!-- Sidebar: Pipeline List -->
-        <aside class="w-80 border-r border-slate-800 bg-slate-900/50 flex flex-col">
-            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
-                <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Pipelines</h2>
-                <button onclick="fetchPipelines()" class="p-1 hover:bg-slate-800 rounded transition" title="Refresh list">
-                    <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-400"></i>
-                </button>
-            </div>
-            <div id="pipeline-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-                <!-- Skeleton Loading -->
-                <div class="animate-pulse space-y-2">
-                    <div class="h-20 bg-slate-800/50 rounded-xl"></div>
-                    <div class="h-20 bg-slate-800/50 rounded-xl"></div>
-                    <div class="h-20 bg-slate-800/50 rounded-xl"></div>
+    <main id="app-content" class="flex-1 flex overflow-hidden opacity-0 transition-opacity duration-500">
+        <!-- VIEW: PIPELINES -->
+        <div id="view-pipelines" class="flex-1 flex overflow-hidden">
+            <aside class="w-80 border-r border-slate-800 bg-slate-900/50 flex flex-col">
+                <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Your Pipelines</h2>
+                    <button onclick="fetchPipelines()" class="p-1 hover:bg-slate-800 rounded transition"><i data-lucide="refresh-cw" class="w-4 h-4 text-slate-500"></i></button>
                 </div>
-            </div>
-        </aside>
+                <div id="pipeline-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2"></div>
+            </aside>
 
-        <!-- Main Content -->
-        <section class="flex-1 flex flex-col bg-[#0f172a] relative">
-            
-            <!-- Empty State -->
-            <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-center p-10">
-                <div class="w-24 h-24 bg-slate-800/50 rounded-full flex items-center justify-center mb-6">
-                    <i data-lucide="layout" class="w-12 h-12 text-slate-600"></i>
+            <section class="flex-1 flex flex-col bg-[#0f172a] relative">
+                <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-center p-10">
+                    <div class="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 text-slate-600"><i data-lucide="layout" class="w-10 h-10"></i></div>
+                    <h3 class="text-xl font-bold text-white mb-2">No Pipeline Selected</h3>
+                    <p class="text-slate-400 max-w-xs text-sm">Select a pipeline to view its status and history.</p>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">No Pipeline Selected</h3>
-                <p class="text-slate-400 max-w-sm">Select a pipeline from the sidebar to view its configuration, manage subscribers, and monitor live job history.</p>
-            </div>
 
-            <!-- Pipeline Details View -->
-            <div id="pipeline-details" class="hidden flex-1 flex flex-col overflow-hidden">
-                
-                <!-- Detail Header -->
-                <div class="p-6 border-b border-slate-800 bg-slate-900/30">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <div class="flex items-center space-x-3 mb-1">
-                                <h2 id="detail-name" class="text-3xl font-bold text-white tracking-tight">Pipeline Name</h2>
-                                <span id="detail-action-tag" class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">ACTION_TYPE</span>
-                            </div>
-                            <p class="text-slate-400 text-sm" id="detail-created">Created on ...</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <button onclick="openTestModal()" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition active:scale-95 border border-slate-700">
-                                <i data-lucide="play" class="w-4 h-4"></i>
-                                <span>Test Webhook</span>
-                            </button>
-                            <button onclick="confirmDelete()" class="flex items-center justify-center w-10 h-10 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition active:scale-95 border border-red-500/20">
-                                <i data-lucide="trash-2" class="w-5 h-5"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-700/50">
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Endpoint Source URL</label>
-                            <div class="flex items-center space-x-3">
-                                <code id="detail-url" class="flex-1 bg-black/40 p-2.5 rounded-lg text-sm text-emerald-400 font-mono overflow-x-auto whitespace-nowrap custom-scrollbar">http://localhost:3000/incoming/slug</code>
-                                <button onclick="copyUrl()" class="p-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors shadow-lg shadow-indigo-600/10" title="Copy to clipboard">
-                                    <i data-lucide="copy" class="w-4 h-4"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-700/50 flex flex-col justify-center">
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Quick Stats</label>
-                            <div class="flex space-x-6 mt-1">
-                                <div>
-                                    <p class="text-2xl font-bold text-white" id="stat-total-jobs">0</p>
-                                    <p class="text-[10px] text-slate-500 uppercase font-bold">Total Jobs</p>
+                <div id="pipeline-details" class="hidden flex-1 flex flex-col overflow-hidden">
+                    <div class="p-6 border-b border-slate-800 bg-slate-900/30">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <div class="flex items-center space-x-3 mb-1">
+                                    <h2 id="detail-name" class="text-2xl font-bold text-white tracking-tight">...</h2>
+                                    <span id="detail-action-tag" class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest">...</span>
                                 </div>
-                                <div>
-                                    <p class="text-2xl font-bold text-emerald-500" id="stat-success-rate">100%</p>
-                                    <p class="text-[10px] text-slate-500 uppercase font-bold">Success</p>
+                                <p id="detail-created" class="text-slate-400 text-sm italic">...</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="openTestModal()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm transition border border-slate-700">Test Webhook</button>
+                                <button onclick="confirmDelete()" class="p-2.5 text-red-500 hover:bg-red-500/10 rounded-lg transition border border-transparent hover:border-red-500/20"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-700/50">
+                                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Endpoint Source URL</label>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <code id="detail-url" class="flex-1 text-emerald-400 text-xs truncate font-mono">...</code>
+                                    <button onclick="copyUrl()" class="p-1 hover:text-white transition"><i data-lucide="copy" class="w-4 h-4"></i></button>
                                 </div>
                             </div>
+                            <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-700/50 flex space-x-8 items-center">
+                                <div><p id="stat-total-jobs" class="text-2xl font-bold text-white">0</p><p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Processed</p></div>
+                                <div><p id="stat-success-rate" class="text-2xl font-bold text-emerald-500">100%</p><p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Health</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col p-6 overflow-hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold flex items-center space-x-2"><i data-lucide="activity" class="w-4 h-4 text-indigo-400"></i><span>Job History</span></h3>
+                            <button onclick="fetchJobsForCurrent()" class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest hover:text-indigo-300">Refresh</button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto border border-slate-800 rounded-xl bg-slate-900/20 custom-scrollbar">
+                            <table class="w-full text-left text-sm border-collapse">
+                                <thead class="bg-slate-900/80 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="p-4 font-bold text-slate-500 border-b border-slate-800 uppercase text-[10px]">Status</th>
+                                        <th class="p-4 font-bold text-slate-500 border-b border-slate-800 uppercase text-[10px]">Job ID</th>
+                                        <th class="p-4 font-bold text-slate-500 border-b border-slate-800 uppercase text-[10px]">Payload Preview</th>
+                                        <th class="p-4 font-bold text-slate-500 border-b border-slate-800 uppercase text-[10px]">Time</th>
+                                        <th class="p-4 border-b border-slate-800"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="jobs-list" class="divide-y divide-slate-800"></tbody>
+                            </table>
+                            <div id="no-jobs" class="hidden p-20 text-center text-slate-500 italic text-sm">No jobs processed yet.</div>
                         </div>
                     </div>
                 </div>
+            </section>
+        </div>
 
-                <!-- Jobs Table Section -->
-                <div class="flex-1 flex flex-col p-6 overflow-hidden">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
-                            <i data-lucide="activity" class="w-5 h-5 text-indigo-400"></i>
-                            <span>Recent Job History</span>
-                        </h3>
-                        <button onclick="fetchJobsForCurrent()" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 transition">
-                            <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-                            <span>Refresh Jobs</span>
-                        </button>
-                    </div>
-
-                    <div class="flex-1 overflow-y-auto border border-slate-800 rounded-xl bg-slate-900/20 custom-scrollbar">
-                        <table class="w-full text-left text-sm border-collapse">
-                            <thead class="bg-slate-900/80 sticky top-0 z-10">
-                                <tr>
-                                    <th class="p-4 font-semibold text-slate-400 border-b border-slate-800">Status</th>
-                                    <th class="p-4 font-semibold text-slate-400 border-b border-slate-800">Job ID</th>
-                                    <th class="p-4 font-semibold text-slate-400 border-b border-slate-800">Payload Preview</th>
-                                    <th class="p-4 font-semibold text-slate-400 border-b border-slate-800">Created At</th>
-                                    <th class="p-4 font-semibold text-slate-400 border-b border-slate-800"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="jobs-list" class="divide-y divide-slate-800">
-                                <!-- Jobs will be rendered here -->
-                            </tbody>
-                        </table>
-                        <div id="no-jobs" class="hidden p-20 text-center">
-                            <p class="text-slate-500">No jobs found for this pipeline. Send a webhook to the endpoint above to start processing.</p>
-                        </div>
-                    </div>
-                </div>
+        <!-- VIEW: LOGS -->
+        <div id="view-logs" class="hidden flex-1 flex flex-col bg-[#0f172a] p-6 overflow-hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold flex items-center space-x-3"><i data-lucide="terminal" class="w-7 h-7 text-indigo-500"></i><span>System Activity Logs</span></h2>
+                <button onclick="fetchSystemLogs()" class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Reload</button>
             </div>
-        </section>
+            <div id="logs-container" class="flex-1 bg-black/40 border border-slate-800 rounded-2xl overflow-y-auto custom-scrollbar p-4 font-mono"></div>
+        </div>
     </main>
 
-    <!-- Modal: Create Pipeline -->
-    <div id="create-modal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div class="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/20">
-                <h2 class="text-xl font-bold text-white">Create New Pipeline</h2>
-                <button onclick="closeCreateModal()" class="text-slate-500 hover:text-white transition">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-            </div>
-            <form id="create-form" class="p-6 space-y-5" onsubmit="submitPipeline(event)">
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Pipeline Identity</label>
-                    <input type="text" id="input-name" required placeholder="e.g. Order Processing Sync" 
-                           class="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition">
+    <!-- MODALS -->
+    <div id="create-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl p-8 space-y-6">
+            <h2 class="text-2xl font-bold">New Automation Pipeline</h2>
+            <form onsubmit="submitPipeline(event)" class="space-y-5" id="create-form">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold uppercase text-slate-500">Pipeline Identity</label>
+                    <input type="text" id="input-name" required placeholder="e.g. Invoice Processor" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-600 transition">
                 </div>
-                
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Processing Logic</label>
-                    <div class="grid grid-cols-1 gap-3">
-                        <label class="relative flex items-center p-3 rounded-xl border border-slate-700 bg-slate-800/30 cursor-pointer hover:bg-slate-800/50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-600/10">
-                            <input type="radio" name="action" value="uppercase_keys" checked class="hidden peer">
-                            <div class="flex-1">
-                                <p class="text-sm font-semibold text-white">Uppercase Keys</p>
-                                <p class="text-xs text-slate-500 italic">Converts all payload keys to uppercase</p>
-                            </div>
-                            <div class="w-4 h-4 rounded-full border-2 border-slate-600 peer-checked:border-indigo-600 peer-checked:bg-indigo-600 transition flex items-center justify-center">
-                                <div class="w-1.5 h-1.5 rounded-full bg-white opacity-0 peer-checked:opacity-100"></div>
-                            </div>
-                        </label>
-                        <label class="relative flex items-center p-3 rounded-xl border border-slate-700 bg-slate-800/30 cursor-pointer hover:bg-slate-800/50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-600/10">
-                            <input type="radio" name="action" value="mask_pii" class="hidden peer">
-                            <div class="flex-1">
-                                <p class="text-sm font-semibold text-white">Mask PII</p>
-                                <p class="text-xs text-slate-500 italic">Hides emails and phone numbers for security</p>
-                            </div>
-                            <div class="w-4 h-4 rounded-full border-2 border-slate-600 peer-checked:border-indigo-600 peer-checked:bg-indigo-600 transition flex items-center justify-center">
-                                <div class="w-1.5 h-1.5 rounded-full bg-white opacity-0 peer-checked:opacity-100"></div>
-                            </div>
-                        </label>
-                        <label class="relative flex items-center p-3 rounded-xl border border-slate-700 bg-slate-800/30 cursor-pointer hover:bg-slate-800/50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-600/10">
-                            <input type="radio" name="action" value="add_timestamp" class="hidden peer">
-                            <div class="flex-1">
-                                <p class="text-sm font-semibold text-white">Add Timestamp</p>
-                                <p class="text-xs text-slate-500 italic">Injects processing time into the payload</p>
-                            </div>
-                            <div class="w-4 h-4 rounded-full border-2 border-slate-600 peer-checked:border-indigo-600 peer-checked:bg-indigo-600 transition flex items-center justify-center">
-                                <div class="w-1.5 h-1.5 rounded-full bg-white opacity-0 peer-checked:opacity-100"></div>
-                            </div>
-                        </label>
-                        <label class="relative flex items-center p-3 rounded-xl border border-slate-700 bg-slate-800/30 cursor-pointer hover:bg-slate-800/50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-600/10">
-                            <input type="radio" name="action" value="analyze_restaurant_review" class="hidden peer">
-                            <div class="flex-1">
-                                <p class="text-sm font-semibold text-white">AI Restaurant Review</p>
-                                <p class="text-xs text-slate-500 italic">Uses AI to analyze sentiment, urgency, and tags</p>
-                            </div>
-                            <div class="w-4 h-4 rounded-full border-2 border-slate-600 peer-checked:border-indigo-600 peer-checked:bg-indigo-600 transition flex items-center justify-center">
-                                <div class="w-1.5 h-1.5 rounded-full bg-white opacity-0 peer-checked:opacity-100"></div>
-                            </div>
-                        </label>
-                        <label class="relative flex items-center p-3 rounded-xl border border-slate-700 bg-slate-800/30 cursor-pointer hover:bg-slate-800/50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-600/10">
-                            <input type="radio" name="action" value="invoice_parser" class="hidden peer">
-                            <div class="flex-1">
-                                <p class="text-sm font-semibold text-white">AI Invoice Parser</p>
-                                <p class="text-xs text-slate-500 italic">Extracts vendor, line items, and GL categories for R365</p>
-                            </div>
-                            <div class="w-4 h-4 rounded-full border-2 border-slate-600 peer-checked:border-indigo-600 peer-checked:bg-indigo-600 transition flex items-center justify-center">
-                                <div class="w-1.5 h-1.5 rounded-full bg-white opacity-0 peer-checked:opacity-100"></div>
-                            </div>
-                        </label>
-                    </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold uppercase text-slate-500">Processing Logic</label>
+                    <select id="action-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                        <option value="invoice_parser">AI Invoice Parser (Extract accounting data)</option>
+                        <option value="analyze_restaurant_review">AI Review Analyzer (Sentiment & Urgency)</option>
+                        <option value="mask_pii">Security: Mask PII (Hide emails/phones)</option>
+                        <option value="add_timestamp">Utility: Add Processing Timestamp</option>
+                    </select>
                 </div>
-
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Downstream Subscribers</label>
-                    <p class="text-[10px] text-slate-500 mb-2 italic">Add URLs separated by commas. These will receive the processed data.</p>
-                    <textarea id="input-urls" required rows="3" placeholder="https://api.yourdomain.com/webhook, https://crm.webhook.com" 
-                              class="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-white font-mono text-xs placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition"></textarea>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold uppercase text-slate-500">Downstream Subscribers (CSV)</label>
+                    <textarea id="input-urls" required placeholder="https://api.yourcrm.com/hook" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 h-20 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono"></textarea>
                 </div>
-
-                <div class="pt-4 flex space-x-3">
-                    <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition">Cancel</button>
-                    <button type="submit" id="submit-btn" class="flex-[2] px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition active:scale-95">Deploy Pipeline</button>
-                </div>
+                <div class="flex space-x-3 pt-4"><button type="button" onclick="closeCreateModal()" class="flex-1 p-3 text-slate-400 font-bold uppercase text-xs">Cancel</button><button type="submit" id="submit-btn" class="flex-[2] bg-indigo-600 rounded-xl font-bold py-3 shadow-lg shadow-indigo-600/20 active:scale-95 transition">Deploy Pipeline</button></div>
             </form>
         </div>
     </div>
 
-    <!-- Modal: Test Webhook -->
-    <div id="test-modal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-            <div class="p-6 border-b border-slate-800 bg-indigo-600/10 flex justify-between items-center">
-                <div class="flex items-center space-x-2 text-indigo-400">
-                    <i data-lucide="play" class="w-5 h-5"></i>
-                    <h2 class="text-xl font-bold text-white">Test Pipeline Webhook</h2>
-                </div>
-                <button onclick="closeTestModal()" class="text-slate-500 hover:text-white transition">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-            </div>
-            <div class="p-6 space-y-5">
-                <p class="text-sm text-slate-400">Simulate an incoming webhook to test your pipeline logic and delivery.</p>
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">JSON Payload</label>
-                    <textarea id="test-payload" rows="8" class="w-full bg-black/40 border border-slate-700 rounded-xl p-4 text-emerald-400 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-indigo-600 transition">
-{
-  "id": "evt_12345",
-  "type": "order.created",
-  "data": {
-    "customer": "John Doe",
-    "email": "john@example.com",
-    "amount": 42.50
-  }
-}
-                    </textarea>
-                </div>
-                <button onclick="triggerTest()" id="test-btn" class="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition active:scale-95">Send Test Webhook</button>
-            </div>
+    <div id="test-modal" class="fixed inset-0 z-50 hidden bg-black/80 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-8 space-y-6">
+            <h2 class="text-2xl font-bold">Simulate Webhook</h2>
+            <textarea id="test-payload" rows="8" class="w-full bg-black/40 border border-slate-700 rounded-xl p-4 text-emerald-400 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-indigo-600">{"text": "Everything was great!", "type": "review"}</textarea>
+            <button onclick="triggerTest()" id="test-btn" class="w-full py-4 bg-indigo-600 rounded-xl font-bold shadow-lg active:scale-95 transition">Fire Test Payload</button>
+            <button onclick="closeTestModal()" class="w-full text-slate-500 text-xs font-bold uppercase">Close</button>
         </div>
     </div>
 
-    <!-- Modal: Job Details (JSON Viewer) -->
-    <div id="job-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
-            <div class="p-6 border-b border-slate-800 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-white flex items-center space-x-2">
-                    <i data-lucide="file-json" class="w-5 h-5 text-indigo-400"></i>
-                    <span>Job Data Inspector</span>
-                </h2>
-                <button onclick="closeJobModal()" class="text-slate-500 hover:text-white transition">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-            </div>
-            <div class="p-6 overflow-y-auto custom-scrollbar">
-                <div class="mb-4 flex justify-between items-center">
-                    <span id="job-modal-id" class="text-xs font-mono text-slate-500">ID: ...</span>
-                    <span id="job-modal-status" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">STATUS</span>
-                </div>
-                <div class="bg-black/40 rounded-xl p-5 border border-slate-700/50">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Payload Data</label>
-                    <pre id="job-modal-payload" class="text-xs text-emerald-400 font-mono whitespace-pre-wrap"></pre>
-                </div>
-            </div>
+    <div id="job-modal" class="fixed inset-0 z-50 hidden bg-black/90 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[85vh] flex flex-col p-8 space-y-4">
+            <div class="flex justify-between items-center"><span class="font-bold text-indigo-400 uppercase text-xs tracking-widest">Data Inspector</span><button onclick="closeJobModal()" class="text-slate-500 hover:text-white transition">✕</button></div>
+            <pre id="job-modal-payload" class="flex-1 overflow-auto bg-black/40 p-6 rounded-2xl text-emerald-400 font-mono text-[11px] custom-scrollbar border border-slate-800"></pre>
         </div>
     </div>
 
-    <script>
-        // State
-        let pipelines = [];
-        let activePipeline = null;
-        let activeJobs = [];
-
-        // App Initialization
-        async function init() {
-            lucide.createIcons();
-            await fetchPipelines();
-        }
-
-        // --- API CALLS ---
-
-        async function fetchPipelines() {
-            try {
-                const res = await fetch('/api/pipelines');
-                const data = await res.json();
-                pipelines = data.data || [];
-                renderPipelines();
-                
-                // If we have an active pipeline, refresh its details too
-                if (activePipeline) {
-                    const updated = pipelines.find(p => p.id === activePipeline.id);
-                    if (updated) {
-                        activePipeline = updated;
-                        updatePipelineUI();
-                    }
-                }
-            } catch (err) {
-                showToast('Error loading pipelines', 'error');
-            }
-        }
-
-        async function fetchJobsForCurrent() {
-            if (!activePipeline) return;
-            
-            const tbody = document.getElementById('jobs-list');
-            const noJobsEl = document.getElementById('no-jobs');
-            
-            try {
-                const res = await fetch(`/api/pipelines/${activePipeline.id}/jobs`);
-                const data = await res.json();
-                activeJobs = data.data || [];
-                renderJobs(activeJobs);
-                
-                // Update stats
-                document.getElementById('stat-total-jobs').innerText = activeJobs.length;
-                const failures = activeJobs.filter(j => j.status === 'failed').length;
-                const rate = activeJobs.length > 0 ? Math.round(((activeJobs.length - failures) / activeJobs.length) * 100) : 100;
-                document.getElementById('stat-success-rate').innerText = rate + '%';
-                document.getElementById('stat-success-rate').className = `text-2xl font-bold ${rate > 90 ? 'text-emerald-500' : rate > 50 ? 'text-yellow-500' : 'text-red-500'}`;
-
-            } catch (err) {
-                showToast('Error loading job history', 'error');
-            }
-        }
-
-        async function submitPipeline(e) {
-            e.preventDefault();
-            const btn = document.getElementById('submit-btn');
-            const originalText = btn.innerText;
-            btn.innerText = 'Deploying...';
-            btn.disabled = true;
-
-            const name = document.getElementById('input-name').value;
-            const action = document.querySelector('input[name="action"]:checked').value;
-            const subscriberUrls = document.getElementById('input-urls').value.split(',').map(u => u.trim()).filter(u => u);
-
-            try {
-                const res = await fetch('/api/pipelines', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, action, subscriberUrls })
-                });
-
-                if (res.ok) {
-                    showToast('Pipeline deployed successfully!', 'success');
-                    closeCreateModal();
-                    await fetchPipelines();
-                    document.getElementById('create-form').reset();
-                } else {
-                    const err = await res.json();
-                    showToast(err.error || 'Failed to create pipeline', 'error');
-                }
-            } catch (err) {
-                showToast('Network error occurred', 'error');
-            } finally {
-                btn.innerText = originalText;
-                btn.disabled = false;
-            }
-        }
-
-        async function triggerTest() {
-            const btn = document.getElementById('test-btn');
-            const payloadStr = document.getElementById('test-payload').value;
-            let payload;
-            
-            try {
-                payload = JSON.parse(payloadStr);
-            } catch (e) {
-                showToast('Invalid JSON payload', 'error');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerText = 'Sending...';
-
-            try {
-                // Get the slug from the URL
-                const slug = activePipeline.sourceUrl.split('/').pop();
-                const res = await fetch(`/incoming/${slug}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (res.ok) {
-                    showToast('Test webhook ingested!', 'success');
-                    closeTestModal();
-                    // Poll for updates in 1 second
-                    setTimeout(fetchJobsForCurrent, 1000);
-                } else {
-                    showToast('Failed to send test webhook', 'error');
-                }
-            } catch (err) {
-                showToast('Error during test execution', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerText = 'Send Test Webhook';
-            }
-        }
-
-        async function confirmDelete() {
-            if (!activePipeline) return;
-            if (confirm(`Are you sure you want to delete "${activePipeline.name}"? All job history will be lost.`)) {
-                try {
-                    const res = await fetch(`/api/pipelines/${activePipeline.id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                        showToast('Pipeline deleted', 'success');
-                        activePipeline = null;
-                        document.getElementById('pipeline-details').classList.add('hidden');
-                        document.getElementById('empty-state').classList.remove('hidden');
-                        await fetchPipelines();
-                    }
-                } catch (err) {
-                    showToast('Delete failed', 'error');
-                }
-            }
-        }
-
-        // --- UI RENDERING ---
-
-        function renderPipelines() {
-            const listEl = document.getElementById('pipeline-list');
-            listEl.innerHTML = '';
-            
-            if (pipelines.length === 0) {
-                listEl.innerHTML = `
-                    <div class="p-8 text-center bg-slate-800/20 rounded-xl border border-slate-800 border-dashed">
-                        <p class="text-xs text-slate-500 italic">No pipelines found</p>
-                    </div>
-                `;
-                return;
-            }
-
-            pipelines.forEach(p => {
-                const isActive = activePipeline && activePipeline.id === p.id;
-                const card = document.createElement('div');
-                card.className = `p-4 rounded-xl border cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group ${
-                    isActive ? 'bg-indigo-600 border-indigo-400 shadow-lg shadow-indigo-600/20' : 'bg-slate-800/40 border-slate-800 hover:border-slate-600'
-                }`;
-                card.onclick = () => selectPipeline(p);
-                
-                card.innerHTML = `
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1 min-w-0">
-                            <h3 class="font-bold text-sm truncate ${isActive ? 'text-white' : 'text-slate-200 group-hover:text-indigo-400'}">${p.name}</h3>
-                            <div class="flex items-center space-x-2 mt-1">
-                                <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                                    isActive ? 'bg-indigo-400/30 text-indigo-100' : 'bg-slate-700 text-slate-400'
-                                }">${p.action}</span>
-                            </div>
-                        </div>
-                        <i data-lucide="chevron-right" class="w-4 h-4 mt-0.5 ${isActive ? 'text-white' : 'text-slate-600'}"></i>
-                    </div>
-                `;
-                listEl.appendChild(card);
-            });
-            lucide.createIcons();
-        }
-
-        function selectPipeline(pipeline) {
-            activePipeline = pipeline;
-            renderPipelines();
-            updatePipelineUI();
-            
-            document.getElementById('empty-state').classList.add('hidden');
-            document.getElementById('pipeline-details').classList.remove('hidden');
-            
-            fetchJobsForCurrent();
-        }
-
-        function updatePipelineUI() {
-            if (!activePipeline) return;
-            document.getElementById('detail-name').innerText = activePipeline.name;
-            document.getElementById('detail-action-tag').innerText = activePipeline.action;
-            document.getElementById('detail-url').innerText = activePipeline.sourceUrl;
-            
-            const date = new Date(activePipeline.createdAt);
-            document.getElementById('detail-created').innerText = `Created on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`;
-        }
-
-        function renderJobs(jobs) {
-            const tbody = document.getElementById('jobs-list');
-            const noJobsEl = document.getElementById('no-jobs');
-            tbody.innerHTML = '';
-            
-            if (jobs.length === 0) {
-                noJobsEl.classList.remove('hidden');
-                return;
-            }
-            
-            noJobsEl.classList.add('hidden');
-            
-            jobs.forEach(job => {
-                let statusClass = 'bg-slate-700 text-slate-300';
-                let statusIcon = 'clock';
-                
-                if (job.status === 'completed') {
-                    statusClass = 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
-                    statusIcon = 'check-circle';
-                } else if (job.status === 'failed') {
-                    statusClass = 'bg-red-500/10 text-red-500 border border-red-500/20';
-                    statusIcon = 'alert-circle';
-                } else if (job.status === 'processing') {
-                    statusClass = 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20';
-                    statusIcon = 'loader';
-                }
-
-                const row = document.createElement('tr');
-                row.className = "hover:bg-slate-800/30 transition group cursor-pointer";
-                row.onclick = () => openJobDetails(job);
-                
-                const time = new Date(job.createdAt).toLocaleString();
-                const payloadPreview = job.payload.length > 60 ? job.payload.substring(0, 60) + '...' : job.payload;
-                
-                row.innerHTML = `
-                    <td class="p-4">
-                        <div class="flex items-center space-x-2">
-                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center space-x-1 ${statusClass}">
-                                <i data-lucide="${statusIcon}" class="w-3 h-3 ${job.status === 'processing' ? 'animate-spin' : ''}"></i>
-                                <span>${job.status}</span>
-                            </span>
-                        </div>
-                    </td>
-                    <td class="p-4">
-                        <span class="font-mono text-xs text-slate-500">${job.id.substring(0, 8)}</span>
-                    </td>
-                    <td class="p-4">
-                        <span class="font-mono text-xs text-slate-400 group-hover:text-slate-200 truncate block max-w-xs">${payloadPreview}</span>
-                    </td>
-                    <td class="p-4">
-                        <span class="text-xs text-slate-500">${time}</span>
-                    </td>
-                    <td class="p-4 text-right">
-                        <i data-lucide="eye" class="w-4 h-4 text-slate-600 group-hover:text-indigo-400 transition ml-auto"></i>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-            lucide.createIcons();
-        }
-
-        // --- MODALS & NOTIFICATIONS ---
-
-        function openCreateModal() { document.getElementById('create-modal').classList.remove('hidden'); }
-        function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); }
-        
-        function openTestModal() { document.getElementById('test-modal').classList.remove('hidden'); }
-        function closeTestModal() { document.getElementById('test-modal').classList.add('hidden'); }
-
-        function openJobDetails(job) {
-            document.getElementById('job-modal-id').innerText = `ID: ${job.id}`;
-            const statusEl = document.getElementById('job-modal-status');
-            statusEl.innerText = job.status;
-            
-            let statusClass = 'bg-slate-700 text-slate-300';
-            if (job.status === 'completed') statusClass = 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
-            else if (job.status === 'failed') statusClass = 'bg-red-500/10 text-red-500 border border-red-500/20';
-            statusEl.className = `px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusClass}`;
-
-            try {
-                const formatted = JSON.stringify(JSON.parse(job.payload), null, 2);
-                document.getElementById('job-modal-payload').innerText = formatted;
-            } catch (e) {
-                document.getElementById('job-modal-payload').innerText = job.payload;
-            }
-            
-            document.getElementById('job-modal').classList.remove('hidden');
-        }
-        
-        function closeJobModal() { document.getElementById('job-modal').classList.add('hidden'); }
-
-        function copyUrl() {
-            const url = document.getElementById('detail-url').innerText;
-            navigator.clipboard.writeText(url);
-            showToast('URL copied to clipboard!', 'success');
-        }
-
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            const colorClass = type === 'success' ? 'border-emerald-500 bg-slate-900 text-emerald-400' : 'border-red-500 bg-slate-900 text-red-400';
-            const icon = type === 'success' ? 'check-circle' : 'alert-circle';
-            
-            toast.className = `toast glass min-w-[200px] p-4 rounded-xl border-l-4 shadow-2xl flex items-center space-x-3 ${colorClass}`;
-            toast.innerHTML = `
-                <i data-lucide="${icon}" class="w-5 h-5"></i>
-                <span class="text-sm font-semibold">${message}</span>
-            `;
-            
-            container.appendChild(toast);
-            lucide.createIcons();
-            
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-x-full');
-                toast.classList.replace('ease-out', 'ease-in');
-                toast.style.transition = 'all 0.3s';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // Boot
-        init();
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>

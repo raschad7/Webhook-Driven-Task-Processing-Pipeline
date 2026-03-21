@@ -9,7 +9,7 @@ import { Worker, Job } from 'bullmq';
 import { db } from '../db';
 import { jobs, subscribers } from '../db/schema';
 import { eq } from 'drizzle-orm';
-
+import { logger } from '../utils/logger';
 const redisConnection = {
     host: process.env.REDIS_HOST || '127.0.0.1',
     port: parseInt(process.env.REDIS_PORT || '6379'),
@@ -23,8 +23,7 @@ console.log(`🔑 Using OpenAI Key ending in: ...${apiKey.slice(-4) || 'NOT FOUN
 // Initialize the Worker
 const worker = new Worker('webhook-processing', async (job: Job) => {
     const { jobId, pipelineId, action } = job.data;
-    console.log(`\n📦 Picked up job ${jobId} (Action: ${action})`);
-
+    await logger.info(`Picked up job for processing`, { jobId, action });
     try {
         // 1. Mark job as "processing"
         await db.update(jobs).set({ status: 'processing' }).where(eq(jobs.id, jobId));
@@ -130,7 +129,7 @@ const worker = new Worker('webhook-processing', async (job: Job) => {
                         response_format: { type: "json_object" }, 
                         messages: [{ 
                             role: "system", 
-                            content: `You are an AI Accounting Assistant specialized in Restaurant365. 
+                            content: `You are an AI Accounting Assistant specialized in Restaurant systems. 
                             Parse the raw invoice text into a structured JSON format.
                             
                             Output Schema:
@@ -193,17 +192,21 @@ const worker = new Worker('webhook-processing', async (job: Job) => {
 
         // 5. Success
         await db.update(jobs).set({ status: 'completed' }).where(eq(jobs.id, jobId));
+        await logger.info(`Job processed and delivered successfully`, { jobId, pipelineId });
         console.log(`✨ Job ${jobId} finished!`);
 
     } catch (error: any) {
-        console.error(`❌ Job ${jobId} failed:`, error.message);
+        await logger.error(`Job failed during processing`, { jobId, error: error.message });
         
         if (job.attemptsMade >= (job.opts.attempts || 1) - 1) {
-             await db.update(jobs).set({ status: 'failed' }).where(eq(jobs.id, jobId));
+            await db.update(jobs).set({ status: 'failed' }).where(eq(jobs.id, jobId));
         }
         throw error;
     }
-},{ connection: redisConnection });
+}, {
+    connection: redisConnection,
+    concurrency: 5
+});
 
 worker.on('error', err => {
     console.error('Worker error:', err);

@@ -1,5 +1,5 @@
 // src/db/schema.ts
-import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid,jsonb,varchar } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const pipelines = pgTable('pipelines', {
@@ -23,6 +23,15 @@ export const jobs = pgTable('jobs', {
   payload: text('payload').notNull(), // Storing JSON as text, or you can use jsonb()
   status: text('status').default('pending').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+
+export const systemLogs = pgTable('system_logs', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    level: varchar('level', { length: 20 }).notNull(), // 'info', 'warn', 'error'
+    message: text('message').notNull(),
+    context: jsonb('context'), // Flexible JSON storage for extra details
+    createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
 // This tells Drizzle how the tables relate to each other

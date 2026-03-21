@@ -1,0 +1,60 @@
+:root {
+    --bg-deep: #0f172a;
+    --bg-glass: rgba(30, 41, 59, 0.7);
+    --indigo-primary: #6366f1;
+}
+
+body {
+    background-color: var(--bg-deep);
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+}
+
+/* Glassmorphism */
+.glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Performance: Optimized Scrollbars */
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+
+/* Nav States */
+.tab-active {
+    background: rgba(99, 102, 241, 0.15);
+    color: white;
+    border-bottom: 2px solid var(--indigo-primary);
+}
+
+/* Status Colors */
+.status-pill {
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-completed { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+.status-failed { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+.status-processing { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+/* Skeleton Loading */
+.skeleton {
+    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+@keyframes loading { from { background-position: 200% 0; } to { background-position: -200% 0; } }
