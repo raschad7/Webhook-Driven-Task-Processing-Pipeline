@@ -39,9 +39,7 @@ const worker = new Worker('webhook-processing', async (job: Job) => {
 
         const payload = JSON.parse(currentJob.payload as string);
         
-        // ==========================================
         // 3. EXECUTE STRATEGY ACTION
-        // ==========================================
         const actionHandler = actionRegistry[action];
         
         if (!actionHandler) {
@@ -50,9 +48,8 @@ const worker = new Worker('webhook-processing', async (job: Job) => {
 
         const processedPayload = await actionHandler(payload, jobId);
 
-        // ==========================================
+
         // 4. DELIVERY TO SUBSCRIBERS
-        // ==========================================
         for (const sub of pipelineSubscribers) {
             console.log(`🚀 Delivering to: ${sub.url}`);
             const response = await fetch(sub.url, {
