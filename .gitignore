@@ -1,2 +1,14 @@
+# Dependency directories
 node_modules/
+
+# Environment variables & Secrets (CRITICAL)
 .env
+.env.*
+
+# Build output
+dist/
+build/
+
+# Operating System files
+.DS_Store
+Thumbs.db
