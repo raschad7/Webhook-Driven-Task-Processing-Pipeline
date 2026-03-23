@@ -1,7 +1,8 @@
 #  Webhook Pipeline Service
 
-A robust, asynchronous webhook ingestion and processing service. This application allows you to define pipelines that receive webhooks, perform predefined transformations or AI-powered analysis on the payloads, and reliably forward the processed data to multiple subscriber endpoints.
+This project is a system that receives webhooks, processes them (with rules or AI), and sends the results to other services.
 
+Think of it like this: Receive data → Process it → Send it somewhere else
 ## 🛠️ Tech Stack
 
 <p align="left">
@@ -33,11 +34,6 @@ graph TD
     Worker -->|7. Forward Webhook| Subscriber[Subscriber e.g., webhook.site]
 ```
 
-1.  **API Server (Express):** Receives incoming webhooks, immediately persists them to the database, enqueues them for processing, and quickly responds to the sender with a `202 Accepted`. It also exposes administrative REST endpoints for pipeline management.
-2.  **Message Queue (Redis / BullMQ):** Acts as a buffer between the API and the worker. Ensures jobs are processed reliably, handling retries, delays, and concurrency control.
-3.  **Database (PostgreSQL / Drizzle ORM):** The source of truth. Stores pipeline configurations, subscriber URLs, job statuses, original payloads, and system audit logs.
-4.  **Worker Service:** Runs in the background, independently of the API. It pulls jobs from the queue, executes the designated "Action" (transformation or AI analysis) on the payload, and orchestrates the delivery to all registered subscribers.
-
 ## 📂 Folder Architecture
 
 ```text
@@ -57,15 +53,38 @@ graph TD
         ├───index.ts      # Worker Execution Loop Entry Point
         └───actions/      # Webhook Transformation & AI Actions (Registry)
 ```
+## 🏗️ Architecture & Design Decisions
+
+- **Separate API and Worker:**  
+  The API quickly receives webhooks and replies with `202 Accepted`.  
+  All heavy work (like AI processing) is done by background workers, so the server stays fast.
+
+- **Reliable Queue (Redis + BullMQ):**  
+  The system uses a queue to manage jobs between the API and the workers, making sure everything runs smoothly and reliably.
+
+  - **Redis:**  
+    Acts as the storage layer for the queue. It keeps all job data in memory (fast), tracks job states (waiting, active, failed), and ensures jobs are not lost.
+
+  - **BullMQ:**  
+    A library that manages the queue logic. It handles adding jobs, processing them, retries, delays, and controlling how many jobs run at the same time.
+
+   If another service goes down, BullMQ will automatically retry the job later using data stored in Redis.
+
+- **Action Registry (Modular Design):**  
+  Each webhook action is a separate function.  
+  To add a new feature, you just add a new function without changing the main system.
+
+
+- **Lightweight ORM (Drizzle):**  
+  Provides strong TypeScript support while staying fast and simple.  
+  It uses less memory than heavier tools, keeping the system efficient.
 
 ---
-
-## ✨ Additional Features
-
--   **UI Dashboard:** A real-time visual dashboard (built with Vanilla JS and TailwindCSS) is available at `http://localhost:3000` to easily create pipelines, monitor incoming webhooks, view processed payloads, and read system logs.
--   **Authentication:** API Key authentication is implemented to secure all administrative and pipeline-management routes from unauthorized access.
--   **Rate Limiting:** Implemented on the public webhook ingestion route to protect the server from spam and DDoS attacks.
--   **Custom Logger:** A robust logging system built for deep observability, making it easy to trace requests and debug across the asynchronous boundaries of the API and the Worker.
+## 🚀 Additional Features 
+-   **UI Dashboard:** built with Vanilla JS and TailwindCSS `http://localhost:3000` 
+-   **API key authentication:** Aprotects from spam.
+-   **Rate Limiting:**  to protect the server from spam and DDoS attacks.
+-   **Custom Logger:** for debugging
 
 ---
 
@@ -75,19 +94,11 @@ graph TD
 -   [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 -   An OpenAI API Key (if you intend to use the AI actions)
 
-### 1. Environment Configuration
-Create a `.env` file in the root of the project. You can copy the values from the provided example or configure your own.
+### 1. Create .env file
 
 ```env
-# Database & Redis (Matching docker-compose defaults)
 DATABASE_URL="postgresql://myuser:mypassword@db:5432/pipeline_db"
-REDIS_HOST="redis"
-REDIS_PORT="6379"
-
-# Security
 ADMIN_API_KEY="your-super-secret-admin-key"
-
-# Integrations
 OPENAI_API_KEY="sk-proj-..." 
 ```
 
@@ -112,7 +123,7 @@ Testing the system involves creating a pipeline, defining where the processed we
 
 ### Step 1: Get a Test Subscriber URL
 If you don't have a receiving server ready, use a free webhook catcher like [webhook.site](https://webhook.site/).
-1. Go to [webhook.site](https://webhook.site/) or any alternative like RequestBin.
+1. Go to [webhook.site](https://webhook.site/) 
 2. Copy "Your unique URL" (e.g., `https://webhook.site/your-unique-id`).
 
 ### Step 2: Create a Pipeline
@@ -127,7 +138,6 @@ Create a pipline using the user interface or manually by sending a `POST` reques
   "subscriberUrls": ["https://webhook.site/your-unique-id"]
 }
 ```
-*Note the `slug` returned in the JSON response, we will assume it is `user-privacy-pipeline`.*
 
 ### Step 3: Send a Webhook
 Send a `POST` request to your new pipeline's ingestion endpoint at `http://localhost:3000/incoming/user-privacy-pipeline` with the following JSON payload:
@@ -165,6 +175,7 @@ Go back to your [webhook.site](https://webhook.site/) tab. You should see a new 
 }
 
 ```
+### Note: you can use **test.http** to test all other endpoints 
 ---
 
 
@@ -173,7 +184,7 @@ Go back to your [webhook.site](https://webhook.site/) tab. You should see a new 
 All administrative endpoints require authentication using an API key passed in the headers:
 `x-api-key: your-super-secret-admin-key`
 
-### Public Endpoints
+ Public Endpoints
 
 *   `GET /health`
     *   Check if the API is running.
@@ -205,12 +216,6 @@ All administrative endpoints require authentication using an API key passed in t
 ---
 
 ## ⚙️ Available Actions & Payloads
-
-When creating a pipeline, you assign an `action` to it. The worker will apply this action to the incoming webhook payload before forwarding it to subscribers.
-
-Here is the list of supported actions and the expected incoming JSON payload structure for each.
-
-
 
 ### 1. `analyze_restaurant_review` (AI Powered) 🤖🧠
 *(Requires `OPENAI_API_KEY`)*
