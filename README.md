@@ -59,6 +59,11 @@ graph TD
   The API quickly receives webhooks and replies with `202 Accepted`.  
   All heavy work (like AI processing) is done by background workers, so the server stays fast.
 
+- **Action Registry (Modular Design):**  
+  Each webhook action is a separate function.  
+  To add a new feature, you just add a new function without changing the main system.
+  
+
 - **Reliable Queue (Redis + BullMQ):**  
   The system uses a queue to manage jobs between the API and the workers, making sure everything runs smoothly and reliably.
 
@@ -70,15 +75,15 @@ graph TD
 
    If another service goes down, BullMQ will automatically retry the job later using data stored in Redis.
 
-- **Action Registry (Modular Design):**  
-  Each webhook action is a separate function.  
-  To add a new feature, you just add a new function without changing the main system.
 
+- **Controller-Service Pattern (N-Tier Architecture):**  
+  The codebase strictly separates HTTP transport logic from business logic.
 
-- **Lightweight ORM (Drizzle):**  
-  Provides strong TypeScript support while staying fast and simple.  
-  It uses less memory than heavier tools, keeping the system efficient.
+  - **Controllers (`src/controllers/`):**  are thin and responsible only for parsing HTTP requests, handling validation, and returning proper status codes 
 
+  - **Services (`src/services/`):**  contain the core business logic, database transactions (`drizzle-orm`), and message queue interactions
+
+  This separation makes the app easier to test, maintain, and extend, and keeps business logic independent from Express.
 ---
 ## 🚀 Additional Features 
 -   **UI Dashboard:** built with Vanilla JS and TailwindCSS `http://localhost:3000` 
@@ -111,15 +116,13 @@ docker-compose up --build
 
 The API will be available at `http://localhost:3000`.
 
-Once running, you can interact with the system using the visual Dashboard UI by visiting `http://localhost:3000` in your browser. Alternatively, you can hit the endpoints directly using API testing tools like Postman or Thunderclient.
 
-*(If running locally without Docker for the Node apps, ensure you have a local Postgres and Redis running, and use `npm run dev` and `npm run worker` in separate terminals after running `npm ci` and `npm run db:push`).*
 
 ---
 
 ## 🧪 How to Test It
 
-Testing the system involves creating a pipeline, defining where the processed webhook should go, and then sending a test payload. You can perform all these steps directly through the **UI Dashboard (`http://localhost:3000`)** or by using API testing tools like **Postman** or **Thunderclient**.
+You can perform all these steps directly through the **UI Dashboard (`http://localhost:3000`)** or by using API testing tools like **Postman** or **Thunderclient**.
 
 ### Step 1: Get a Test Subscriber URL
 If you don't have a receiving server ready, use a free webhook catcher like [webhook.site](https://webhook.site/).
