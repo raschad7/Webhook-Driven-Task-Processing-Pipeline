@@ -6,7 +6,6 @@ import { eq } from 'drizzle-orm';
 import { logger } from '../utils/logger';
 
 const PORT = process.env.PORT || 3000;
-
 export const PipelineService = {
     async createPipeline(name: string, action: string, subscriberUrls: string[]) {
         const uniqueSlug = crypto.randomBytes(6).toString('hex');

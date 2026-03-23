@@ -21,7 +21,7 @@ services:
 
   api:
     build: .
-    command: npx ts-node src/index.ts
+    command: sh -c "npm run db:push && npx ts-node src/index.ts"
     restart: always
     ports:
       - "3000:3000"

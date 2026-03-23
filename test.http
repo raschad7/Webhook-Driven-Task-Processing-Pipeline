@@ -1,0 +1,66 @@
+@baseUrl = http://localhost:3000
+@apiKey = 
+@pipelineId = 
+@sourceUrl = 
+@jobId = 
+
+### Step 1: Health Check (Public)
+GET {{baseUrl}}/health
+
+### Step 2: Create a Pipeline (Protected)
+# @name createPipeline
+POST {{baseUrl}}/api/pipelines
+x-api-key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "name": "Customer Data Ingestion",
+  "action": "mask_pii",
+  "subscriberUrls": ["https://webhooksite.net/c5c9dac9-e7d4-4caf-949c-9b990a16022d"]
+}
+
+### Step 3: Get All Pipelines (Protected)
+GET {{baseUrl}}/api/pipelines
+x-api-key: {{apiKey}}
+
+### Step 4: Get Pipeline by ID (Protected)
+GET {{baseUrl}}/api/pipelines/{{pipelineId}}
+x-api-key: {{apiKey}}
+
+### Step 5: Ingest a Webhook (Public)
+# @name ingestWebhook
+POST {{baseUrl}}/incoming/{{sourceUrl}}
+Content-Type: application/json
+
+{
+  "customer_name": "John Doe",
+  "email": "john.doe@example.com",
+  "event": "account_created",
+  "credit_card": "4111-1111-1111-1111"
+}
+
+### Step 6: Check Job Status (Protected)
+GET {{baseUrl}}/api/pipelines/{{pipelineId}}/jobs
+x-api-key: {{apiKey}}
+
+### Step 7: Retry a Job (Protected)
+POST {{baseUrl}}/api/jobs/{{jobId}}/retry
+x-api-key: {{apiKey}}
+
+### Step 8: View System Logs (Protected)
+GET {{baseUrl}}/api/logs
+x-api-key: {{apiKey}}
+
+### Step 9: Update the Pipeline (Protected)
+PUT {{baseUrl}}/api/pipelines/{{pipelineId}}
+x-api-key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "name": "Updated Customer Ingestion",
+  "action": "add_timestamp"
+}
+
+### Step 10: Delete the Pipeline (Protected)
+DELETE {{baseUrl}}/api/pipelines/{{pipelineId}}
+x-api-key: {{apiKey}}
