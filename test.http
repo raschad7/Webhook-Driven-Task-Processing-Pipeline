@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:3000
-@apiKey = 
+@apiKey = admin-secret-key123
 @pipelineId = 
 @sourceUrl = 
 @jobId = 
@@ -14,7 +14,7 @@ x-api-key: {{apiKey}}
 Content-Type: application/json
 
 {
-  "name": "Customer Data Ingestion",
+  "name": "Demo Test",
   "action": "mask_pii",
   "subscriberUrls": ["https://webhooksite.net/c5c9dac9-e7d4-4caf-949c-9b990a16022d"]
 }
@@ -35,8 +35,7 @@ Content-Type: application/json
 {
   "customer_name": "John Doe",
   "email": "john.doe@example.com",
-  "event": "account_created",
-  "credit_card": "4111-1111-1111-1111"
+  "event": "account_created"
 }
 
 ### Step 6: Check Job Status (Protected)
