@@ -143,18 +143,17 @@ Create a pipline using the user interface or manually by sending a `POST` reques
 ```
 
 > ⚠️ **Note:**  
-> Run the following command to apply database changes:
+> If creating a pipeline fails:
+>
+> - Open a **new terminal**
+> - Keep the other terminal (running `docker-compose up`) still running  
+> - Run this command in the new terminal:
+>
 > ```bash
 > docker compose exec api npm run db:push
 > ```
 >
-> If the command fails:
-> - Make sure your containers are running (`docker-compose up`)
-> - Open a **new terminal**
-> - Keep the first terminal running Docker
-> - Run the command again in the new terminal
->
-> 👉 This usually fixes the problem.
+> 👉 This usually fixes the issue.
 
 ### Step 3: Send a Webhook
 Send a `POST` request to your new pipeline's ingestion endpoint at `http://localhost:3000/incoming/user-privacy-pipeline` with the following JSON payload:
